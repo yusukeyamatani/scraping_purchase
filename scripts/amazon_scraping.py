@@ -4,15 +4,20 @@ http://selenium-python.readthedocs.io/locating-elements.html#locating-by-xpath
 """
 import os
 import time
+import sys
+
+path = os.path.join(os.path.dirname(__file__), '../')
+sys.path.append(path)
+
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
+from settings.amazon import (LOGIN_URL,
+                             LOGOUT_URL,
+                             PRODUCT_URL,
+                             ID,
+                             PASSWORD,
+                             )
 
-LOGIN_URL = 'https://www.amazon.co.jp/ap/signin?_encoding=UTF8&openid.assoc_handle=jpflex&openid.claimed_id=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.identity=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.mode=checkid_setup&openid.ns=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0&openid.ns.pape=http%3A%2F%2Fspecs.openid.net%2Fextensions%2Fpape%2F1.0&openid.pape.max_auth_age=0&openid.return_to=https%3A%2F%2Fwww.amazon.co.jp%2Fgp%2Fyourstore%2Fhome%3Fie%3DUTF8%26action%3Dsign-out%26path%3D%252Fgp%252Fyourstore%252Fhome%26ref_%3Dnav_youraccount_signout%26signIn%3D1%26useRedirectOnSuccess%3D1'
-LOGOUT_URL = 'https://www.amazon.co.jp/gp/flex/sign-out.html/ref=nav_youraccount_signout?ie=UTF8&action=sign-out&path=%2Fgp%2Fyourstore%2Fhome&signIn=1&useRedirectOnSuccess=1'
-PRODUCT_URL = ''
-
-ID = ''
-PASSWORD = ''
 
 DRIVER_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 RETRY_COUNT = 100
@@ -24,11 +29,11 @@ class CartException(Exception):
 
 
 def _product_purchase():
-        _login()
-        browser.get(PRODUCT_URL)
-        _add_cart()
-        _procedures()
-        _purchase()
+    _login()
+    browser.get(PRODUCT_URL)
+    _add_cart()
+    _procedures()
+    _purchase()
 
 
 def _login():

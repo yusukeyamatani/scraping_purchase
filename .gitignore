@@ -16,3 +16,5 @@ tags
 application/static/.tmp
 ._*
 .python-version
+settings/amazon.py
+settings/rakuten.py

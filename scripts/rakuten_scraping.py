@@ -4,16 +4,19 @@ http://selenium-python.readthedocs.io/locating-elements.html#locating-by-xpath
 """
 import os
 import time
+import sys
+
+path = os.path.join(os.path.dirname(__file__), '../')
+sys.path.append(path)
+
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
-
-LOGIN_URL = 'https://www.rakuten.co.jp/myrakuten/login.html'
-LOGOUT_URL = 'https://member.id.rakuten.co.jp/rms/nid/logout'
-PRODUCT_ID = ''
-PRODUCT_URL = 'http://books.rakuten.co.jp/rb/{}/'.format(PRODUCT_ID)
-
-ID = ''
-PASSWORD = ''
+from settings.rakuten import (LOGIN_URL,
+                              LOGOUT_URL,
+                              PRODUCT_URL,
+                              ID,
+                              PASSWORD,
+                              )
 
 DRIVER_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 RETRY_COUNT = 100
@@ -21,7 +24,6 @@ IS_DEBUG = True
 
 
 def _product_purchase():
-        print
         # browser.get(LOGIN_URL)
         # time.sleep(1) # 画面表を待つ 秒数は適当
         # browser.find_element_by_name('u').send_keys(ID)
