@@ -48,15 +48,17 @@ class RakutenPurchase(BasePurchase):
             self._purchase_login()
             self._purchase()
 
-    def _cart_element_exists(self):
-        try:
-            return WebDriverWait(self.driver, 1).until(EC.presence_of_element_located((By.CLASS_NAME, 'new_addToCart')))
-        except NoSuchElementException:
-            return None
-
     def _add_cart(self):
+
+        def _cart_element_exists():
+            try:
+                return WebDriverWait(self.driver, 1).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, 'new_addToCart')))
+            except NoSuchElementException:
+                return None
+
         for i in range(1, RETRY_COUNT):
-            if self._cart_element_exists():
+            if _cart_element_exists():
                 break
             else:
                 self.driver.execute_script('location.reload()')
