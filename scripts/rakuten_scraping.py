@@ -14,6 +14,9 @@ from selenium.common.exceptions import NoSuchElementException
 from settings.rakuten import (LOGIN_URL,
                               LOGOUT_URL,
                               PRODUCT_URL,
+                              PROCEDURES_URL,
+                              PURCHESE_LOGIN_URL,
+                              PURCHESE_URL,
                               ID,
                               PASSWORD,
                               )
@@ -21,64 +24,84 @@ from settings.rakuten import (LOGIN_URL,
 DRIVER_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 RETRY_COUNT = 100
 IS_DEBUG = True
+DRIVER = webdriver.Chrome(DRIVER_PATH)
 
 
 def _product_purchase():
-        # browser.get(LOGIN_URL)
+        # DRIVER.get(LOGIN_URL)
         # time.sleep(1) # 画面表を待つ 秒数は適当
-        # browser.find_element_by_name('u').send_keys(ID)
-        # browser.find_element_by_name('p').send_keys(PASSWORD)
-        # browser.find_element_by_class_name("loginButton").click()
+        # DRIVER.find_element_by_name('u').send_keys(ID)
+        # DRIVER.find_element_by_name('p').send_keys(PASSWORD)
+        # DRIVER.find_element_by_class_name("loginButton").click()
+        DRIVER.get(PRODUCT_URL)
         _add_cart()
         _procedures()
-        _login()
+        _purchase_login()
         _purchase()
 
 
+def _element_exists(m, args):
+    try:
+        return m(args)
+    except NoSuchElementException:
+        return None
+
+
 def _add_cart():
-    browser.get(PRODUCT_URL)
+    if DRIVER.current_url != PRODUCT_URL:
+        return
+
     for i in range(1, RETRY_COUNT):
-        try:
-            print("買い物かごに入れる")
-            add_cart = browser.find_element_by_class_name("new_addToCart")
+        add_cart = _element_exists(DRIVER.find_element_by_class_name, 'new_addToCart')
+        if add_cart:
+            print('買い物かごに入れる')
             break
-        except NoSuchElementException:
-            browser.execute_script("location.reload()")
+        else:
+            DRIVER.execute_script('location.reload()')
             print('reload')
     add_cart.click()
 
 
 def _procedures():
+    if DRIVER.current_url != PROCEDURES_URL:
+        return
+
     print('購入手続き')
-    cart_btn = browser.find_element_by_id('js-cartBtn')
+    cart_btn = DRIVER.find_element_by_id('js-cartBtn')
     cart_btn.click()
 
 
-def _login():
+def _purchase_login():
+    if DRIVER.current_url != PURCHESE_LOGIN_URL:
+        return
+
     print('ログイン')
-    browser.find_element_by_name('u').send_keys(ID)
-    browser.find_element_by_name('p').send_keys(PASSWORD)
-    browser.find_element_by_class_name("btn-red").click()
-    browser.find_element_by_class_name("check-all_off").click()
+    DRIVER.find_element_by_name('u').send_keys(ID)
+    DRIVER.find_element_by_name('p').send_keys(PASSWORD)
+    DRIVER.find_element_by_class_name('btn-red').click()
+    DRIVER.find_element_by_class_name('check-all_off').click()
 
 
 def _purchase():
-    url = browser.current_url
-    if url == 'https://books.step.rakuten.co.jp/rms/mall/book/bs/books/ConfirmOrder':
+    if DRIVER.current_url == PURCHESE_URL:
+        return
+
         print('最終決済')
         if not IS_DEBUG:
             # ↓最終決済
-            browser.find_element_by_class_name("btn-red").click()
+            DRIVER.find_element_by_class_name('btn-red').click()
         else:
             raise
 
 if __name__ == '__main__':
-    browser = webdriver.Chrome(DRIVER_PATH)
-    browser.set_window_size(1200, 1000)
+    DRIVER = webdriver.Chrome(DRIVER_PATH)
+    DRIVER.set_window_size(1200, 1000)
+    DRIVER.implicitly_wait(30)
     try:
         _product_purchase()
     except:
         pass
     finally:
         print('ログアウト')
-        browser.get(LOGOUT_URL)
+        DRIVER.get(LOGOUT_URL)
+        DRIVER.close()
