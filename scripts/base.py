@@ -20,9 +20,10 @@ class Finish(object):
 
 
 class BasePurchase():
-    def __init__(self):
+    def __init__(self, thread_num):
         self.driver = webdriver.Chrome(driver_path)
         self.wait = WebDriverWait(self.driver, WAIT_SECOND)
+        self.thread_num = thread_num
 
     def product_purchase(self):
        pass

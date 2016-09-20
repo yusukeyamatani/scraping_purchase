@@ -5,6 +5,7 @@
 import os
 import sys
 import threading
+import logging
 
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -12,6 +13,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 
 from base import BasePurchase, Finish
+
 
 path = os.path.join(os.path.dirname(__file__), '../')
 sys.path.append(path)
@@ -21,6 +23,15 @@ from settings.rakuten import (LOGIN_URL,
                               ID,
                               PASSWORD,
                               )
+
+
+logging.basicConfig(level=logging.INFO,
+    filename="rakuten_purchase.log",
+    format="%(asctime)s %(levelname)-7s %(message)s")
+logger = logging.getLogger("logger")
+logger.setLevel(logging.INFO)
+
+
 RETRY_COUNT = 100
 THREAD_NUM = 5
 IS_DEBUG = True
@@ -28,16 +39,16 @@ IS_DEBUG = True
 ns = Finish()
 ns.end_flag = False
 
+
 class RakutenPurchase(BasePurchase):
 
     def product_purchase(self):
         try:
             self._product_purchase()
         except Exception as e:
-            print e.__class__
-            print e
+            logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__, e))
         finally:
-            print 'ログアウト'
+            logger.info('thread_{}: logout'.format(self.thread_num))
             self.driver.get(LOGOUT_URL)
             self.driver.close()
 
@@ -62,13 +73,13 @@ class RakutenPurchase(BasePurchase):
                 break
             else:
                 self.driver.execute_script('location.reload()')
-                print('reload')
+                logger.info('thread_{}: reload'.format(self.thread_num))
 
-        print '買い物かごに入れる'
+        logger.info('thread_{}: add_cart'.format(self.thread_num))
         self.driver.find_element_by_class_name('new_addToCart').click()
 
     def _procedures(self):
-        print '購入手続き'
+        logger.info('thread_{}: procedures'.format(self.thread_num))
 
         self.wait.until(EC.presence_of_element_located((By.ID, 'js-cartBtn')))
 
@@ -76,9 +87,8 @@ class RakutenPurchase(BasePurchase):
         cart_btn.click()
 
     def _purchase_login(self):
-        print('ログイン')
-
         self.wait.until(EC.presence_of_element_located((By.NAME, 'u')))
+        logger.info('thread_{}: login'.format(self.thread_num))
 
         self.driver.find_element_by_name('u').send_keys(ID)
         self.driver.find_element_by_name('p').send_keys(PASSWORD)
@@ -87,24 +97,24 @@ class RakutenPurchase(BasePurchase):
 
     def _purchase(self):
         if ns.end_flag:
-            print 'not _purchase'
+            logger.info('thread_{}: Purchased in other thread'.format(self.thread_num))
             return
 
-        print '最終決済'
         self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'btn-red')))
 
         if not IS_DEBUG:
             # ↓最終決済
             self.driver.find_element_by_class_name('btn-red').click()
+            logger.info('thread_{}: purchase finish'.format(self.thread_num))
         else:
-            print 'DEBUG _purchase'
+            logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
         ns.end_flag = True
         return
 
 if __name__ == '__main__':
     threads = []
     for i in range(THREAD_NUM):
-        test = RakutenPurchase()
+        test = RakutenPurchase(i)
         t = threading.Thread(target=test.product_purchase)
         threads.append(t)
         t.start()
