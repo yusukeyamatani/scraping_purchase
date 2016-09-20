@@ -9,18 +9,20 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-class Finish(object):
-    pass
-
+WAIT_SECOND = 10
 path = os.path.join(os.path.dirname(__file__), '../')
 sys.path.append(path)
 driver_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 
 
+class Finish(object):
+    pass
+
+
 class BasePurchase():
     def __init__(self):
         self.driver = webdriver.Chrome(driver_path)
-        self.wait = WebDriverWait(self.driver, 5)
+        self.wait = WebDriverWait(self.driver, WAIT_SECOND)
 
     def product_purchase(self):
        pass
