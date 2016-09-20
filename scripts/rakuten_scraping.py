@@ -3,105 +3,112 @@
 http://selenium-python.readthedocs.io/locating-elements.html#locating-by-xpath
 """
 import os
-import time
 import sys
+import threading
 
 path = os.path.join(os.path.dirname(__file__), '../')
 sys.path.append(path)
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.by import By
 from settings.rakuten import (LOGIN_URL,
                               LOGOUT_URL,
                               PRODUCT_URL,
-                              PROCEDURES_URL,
-                              PURCHESE_LOGIN_URL,
-                              PURCHESE_URL,
                               ID,
                               PASSWORD,
                               )
 
-DRIVER_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
+driver_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 RETRY_COUNT = 100
+THREAD_NUM = 5
 IS_DEBUG = True
-DRIVER = webdriver.Chrome(DRIVER_PATH)
 
 
-def _product_purchase():
-        # DRIVER.get(LOGIN_URL)
-        # time.sleep(1) # 画面表を待つ 秒数は適当
-        # DRIVER.find_element_by_name('u').send_keys(ID)
-        # DRIVER.find_element_by_name('p').send_keys(PASSWORD)
-        # DRIVER.find_element_by_class_name("loginButton").click()
-        DRIVER.get(PRODUCT_URL)
-        _add_cart()
-        _procedures()
-        _purchase_login()
-        _purchase()
+class Finish(object): pass
+ns = Finish()
+ns.end_flag = False
 
 
-def _element_exists(m, args):
-    try:
-        return m(args)
-    except NoSuchElementException:
-        return None
+class RakutenPurchase():
+    def __init__(self):
+        self.driver = webdriver.Chrome(driver_path)
+        self.wait = WebDriverWait(self.driver, 5)
 
+    def product_purchase(self):
+        try:
+            self._product_purchase()
+        except Exception as e:
+            print e.__class__
+            print e
+        finally:
+            print 'ログアウト'
+            self.driver.get(LOGOUT_URL)
+            self.driver.close()
 
-def _add_cart():
-    if DRIVER.current_url != PRODUCT_URL:
-        return
+    def _product_purchase(self):
+            self.driver.get(PRODUCT_URL)
+            self._add_cart()
+            self._procedures()
+            self._purchase_login()
+            self._purchase()
 
-    for i in range(1, RETRY_COUNT):
-        add_cart = _element_exists(DRIVER.find_element_by_class_name, 'new_addToCart')
-        if add_cart:
-            print('買い物かごに入れる')
-            break
-        else:
-            DRIVER.execute_script('location.reload()')
-            print('reload')
-    add_cart.click()
+    def _cart_element_exists(self):
+        try:
+            return WebDriverWait(self.driver, 1).until(EC.presence_of_element_located((By.CLASS_NAME, 'new_addToCart')))
+        except NoSuchElementException:
+            return None
 
+    def _add_cart(self):
+        for i in range(1, RETRY_COUNT):
+            if self._cart_element_exists():
+                break
+            else:
+                self.driver.execute_script('location.reload()')
+                print('reload')
 
-def _procedures():
-    if DRIVER.current_url != PROCEDURES_URL:
-        return
+        print '買い物かごに入れる'
+        self.driver.find_element_by_class_name('new_addToCart').click()
 
-    print('購入手続き')
-    cart_btn = DRIVER.find_element_by_id('js-cartBtn')
-    cart_btn.click()
+    def _procedures(self):
+        print '購入手続き'
 
+        self.wait.until(EC.presence_of_element_located((By.ID, 'js-cartBtn')))
 
-def _purchase_login():
-    if DRIVER.current_url != PURCHESE_LOGIN_URL:
-        return
+        cart_btn = self.driver.find_element_by_id('js-cartBtn')
+        cart_btn.click()
 
-    print('ログイン')
-    DRIVER.find_element_by_name('u').send_keys(ID)
-    DRIVER.find_element_by_name('p').send_keys(PASSWORD)
-    DRIVER.find_element_by_class_name('btn-red').click()
-    DRIVER.find_element_by_class_name('check-all_off').click()
+    def _purchase_login(self):
+        print('ログイン')
 
+        self.wait.until(EC.presence_of_element_located((By.NAME, 'u')))
 
-def _purchase():
-    if DRIVER.current_url == PURCHESE_URL:
-        return
+        self.driver.find_element_by_name('u').send_keys(ID)
+        self.driver.find_element_by_name('p').send_keys(PASSWORD)
+        self.driver.find_element_by_class_name('btn-red').click()
+        self.driver.find_element_by_class_name('check-all_off').click()
 
-        print('最終決済')
+    def _purchase(self):
+        if ns.end_flag:
+            print 'not _purchase'
+            return
+
+        print '最終決済'
+        self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'btn-red')))
         if not IS_DEBUG:
             # ↓最終決済
-            DRIVER.find_element_by_class_name('btn-red').click()
+            self.driver.find_element_by_class_name('btn-red').click()
         else:
-            raise
+            print 'DEBUG _purchase'
+        ns.end_flag = True
+        return
 
 if __name__ == '__main__':
-    DRIVER = webdriver.Chrome(DRIVER_PATH)
-    DRIVER.set_window_size(1200, 1000)
-    DRIVER.implicitly_wait(30)
-    try:
-        _product_purchase()
-    except:
-        pass
-    finally:
-        print('ログアウト')
-        DRIVER.get(LOGOUT_URL)
-        DRIVER.close()
+    threads = []
+    for i in range(THREAD_NUM):
+        test = RakutenPurchase()
+        t = threading.Thread(target=test.product_purchase)
+        threads.append(t)
+        t.start()
