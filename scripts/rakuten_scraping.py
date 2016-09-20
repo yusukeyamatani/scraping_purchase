@@ -1,41 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-http://selenium-python.readthedocs.io/locating-elements.html#locating-by-xpath
+楽天
 """
 import os
 import sys
 import threading
 
-path = os.path.join(os.path.dirname(__file__), '../')
-sys.path.append(path)
-
-from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
+
+from base import BasePurchase, Finish
+
+path = os.path.join(os.path.dirname(__file__), '../')
+sys.path.append(path)
 from settings.rakuten import (LOGIN_URL,
                               LOGOUT_URL,
                               PRODUCT_URL,
                               ID,
                               PASSWORD,
                               )
-
-driver_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 RETRY_COUNT = 100
 THREAD_NUM = 5
 IS_DEBUG = True
 
-
-class Finish(object): pass
 ns = Finish()
 ns.end_flag = False
 
-
-class RakutenPurchase():
-    def __init__(self):
-        self.driver = webdriver.Chrome(driver_path)
-        self.wait = WebDriverWait(self.driver, 5)
+class RakutenPurchase(BasePurchase):
 
     def product_purchase(self):
         try:
@@ -97,6 +90,7 @@ class RakutenPurchase():
 
         print '最終決済'
         self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'btn-red')))
+
         if not IS_DEBUG:
             # ↓最終決済
             self.driver.find_element_by_class_name('btn-red').click()
