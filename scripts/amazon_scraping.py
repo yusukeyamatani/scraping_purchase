@@ -38,7 +38,7 @@ logger.setLevel(logging.INFO)
 
 CART_TYPE = ['one_click', 'normal']
 RETRY_COUNT = 100
-THREAD_NUM = 5
+THREAD_NUM = 3
 IS_DEBUG = True
 
 
@@ -55,28 +55,29 @@ class AmazonPurchase(BasePurchase):
 
     def product_purchase(self):
         self._login()
+        self._one_click_on()
         self.driver.get(PRODUCT_URL)
         self._add_cart()
         self._procedures()
         self._purchase()
 
     def _login(self):
-        logger.info('thread_{}: login'.format(self.thread_num))
-
         self.driver.get(LOGIN_URL)
-
         self.wait.until(EC.presence_of_element_located((By.ID, 'ap_email')))
 
         self.driver.find_element_by_id('ap_email').send_keys(ID)
         self.driver.find_element_by_id('ap_password').send_keys(PASSWORD)
         self.driver.find_element_by_id('signInSubmit').click()
+        logger.info('thread_{}: login'.format(self.thread_num))
+
+    def _one_click_on(self):
+        self.driver.get('https://www.amazon.co.jp/gp/css/account/address/view.html')
+        self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'myab-1click-button')))
+
+        self.driver.find_element_by_class_name('myab-1click-button').click()
+        logger.info('thread_{}: one_click ON'.format(self.thread_num))
 
     def _add_cart(self):
-        def _one_click_open_link_exists():
-            try:
-                return EC.presence_of_element_located((By.LINK_TEXT, '1-Clickで注文する場合は、サインインをしてください。'))
-            except NoSuchElementException:
-                return None
 
         def _one_click_exists():
             try:
@@ -91,9 +92,6 @@ class AmazonPurchase(BasePurchase):
                 return None
 
         def _click_cart_type():
-            link = _one_click_open_link_exists()
-            if link:
-                self.driver.find_element_by_link_text('1-Clickで注文する場合は、サインインをしてください。').click()
 
             if _one_click_exists():
                 return CART_TYPE[0]
