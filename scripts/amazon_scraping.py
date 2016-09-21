@@ -156,7 +156,7 @@ class AmazonPurchase(BasePurchase):
 if __name__ == '__main__':
     threads = []
     for i in range(THREAD_NUM):
-        test = AmazonPurchase(i)
-        t = threading.Thread(target=test.product_purchase)
+        amazon = AmazonPurchase(i)
+        t = threading.Thread(target=amazon.product_purchase)
         threads.append(t)
         t.start()

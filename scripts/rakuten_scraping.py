@@ -114,7 +114,7 @@ class RakutenPurchase(BasePurchase):
 if __name__ == '__main__':
     threads = []
     for i in range(THREAD_NUM):
-        test = RakutenPurchase(i)
-        t = threading.Thread(target=test.product_purchase)
+        rakuten = RakutenPurchase(i)
+        t = threading.Thread(target=rakuten.product_purchase)
         threads.append(t)
         t.start()
