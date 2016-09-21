@@ -43,8 +43,8 @@ IS_DEBUG = True
 
 
 class Finish(object): pass
-ns = Finish()
-ns.end_flag = False
+fin = Finish()
+fin.end_flag = False
 
 
 class CartExist(Exception):
@@ -54,6 +54,16 @@ class CartExist(Exception):
 class AmazonPurchase(BasePurchase):
 
     def product_purchase(self):
+        try:
+            self._product_purchase()
+        except Exception as e:
+            logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__, e))
+        finally:
+            self.driver.get(LOGOUT_URL)
+            self.driver.close()
+            logger.info('thread_{}: logout'.format(self.thread_num))
+
+    def _product_purchase(self):
         self._login()
         self._one_click_on()
         self.driver.get(PRODUCT_URL)
@@ -104,39 +114,38 @@ class AmazonPurchase(BasePurchase):
         self.driver.get(PRODUCT_URL)
         for i in range(1, RETRY_COUNT):
             cart_type = _click_cart_type()
-
             logger.info('thread_{}: cart_type {}'.format(self.thread_num, cart_type))
 
             if cart_type:
                 break
             else:
-                logger.info('thread_{}: reload'.format(self.thread_num))
                 self.driver.execute_script('location.reload()')
+                logger.info('thread_{}: reload'.format(self.thread_num))
 
         if cart_type == CART_TYPE[0]:
             if IS_DEBUG:
-                logger.info('thread_{}: DEBUG one click'.format(self.thread_num))
-
+                logger.info('thread_{}: DEBUG one click -> normal'.format(self.thread_num))
                 cart_type = CART_TYPE[1]
             else:
                 self.driver.find_element_by_id('oneClickBuyButton').click()
+                logger.info('thread_{}: one click'.format(self.thread_num))
 
         if cart_type == CART_TYPE[1]:
             self.driver.find_element_by_id('submit.add-to-cart').click()
+            logger.info('thread_{}: add_cart'.format(self.thread_num))
 
         if not cart_type:
             raise CartExist
 
     def _procedures(self):
-        logger.info('thread_{}: procedures'.format(self.thread_num))
-
         self.wait.until(EC.presence_of_element_located((By.ID, 'hlb-ptc-btn')))
 
         cart_btn = self.driver.find_element_by_id('hlb-ptc-btn')
         cart_btn.click()
+        logger.info('thread_{}: procedures'.format(self.thread_num))
 
     def _purchase(self):
-        if ns.end_flag:
+        if fin.end_flag:
             logger.info('thread_{}: Purchased in other thread'.format(self.thread_num))
             return
 
@@ -148,7 +157,7 @@ class AmazonPurchase(BasePurchase):
             logger.info('thread_{}: purchase finish'.format(self.thread_num))
         else:
             logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
-        ns.end_flag = True
+        fin.end_flag = True
         return
 
 if __name__ == '__main__':

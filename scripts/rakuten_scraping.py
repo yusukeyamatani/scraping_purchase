@@ -36,8 +36,8 @@ RETRY_COUNT = 100
 THREAD_NUM = 5
 IS_DEBUG = True
 
-ns = Finish()
-ns.end_flag = False
+fin = Finish()
+fin.end_flag = False
 
 
 class RakutenPurchase(BasePurchase):
@@ -48,9 +48,9 @@ class RakutenPurchase(BasePurchase):
         except Exception as e:
             logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__, e))
         finally:
-            logger.info('thread_{}: logout'.format(self.thread_num))
             self.driver.get(LOGOUT_URL)
             self.driver.close()
+            logger.info('thread_{}: logout'.format(self.thread_num))
 
     def _product_purchase(self):
             self.driver.get(PRODUCT_URL)
@@ -75,28 +75,27 @@ class RakutenPurchase(BasePurchase):
                 self.driver.execute_script('location.reload()')
                 logger.info('thread_{}: reload'.format(self.thread_num))
 
-        logger.info('thread_{}: add_cart'.format(self.thread_num))
         self.driver.find_element_by_class_name('new_addToCart').click()
+        logger.info('thread_{}: add_cart'.format(self.thread_num))
 
     def _procedures(self):
-        logger.info('thread_{}: procedures'.format(self.thread_num))
-
         self.wait.until(EC.presence_of_element_located((By.ID, 'js-cartBtn')))
 
         cart_btn = self.driver.find_element_by_id('js-cartBtn')
         cart_btn.click()
+        logger.info('thread_{}: procedures'.format(self.thread_num))
 
     def _purchase_login(self):
         self.wait.until(EC.presence_of_element_located((By.NAME, 'u')))
-        logger.info('thread_{}: login'.format(self.thread_num))
 
         self.driver.find_element_by_name('u').send_keys(ID)
         self.driver.find_element_by_name('p').send_keys(PASSWORD)
         self.driver.find_element_by_class_name('btn-red').click()
         self.driver.find_element_by_class_name('check-all_off').click()
+        logger.info('thread_{}: purchase_login'.format(self.thread_num))
 
     def _purchase(self):
-        if ns.end_flag:
+        if fin.end_flag:
             logger.info('thread_{}: Purchased in other thread'.format(self.thread_num))
             return
 
@@ -108,7 +107,7 @@ class RakutenPurchase(BasePurchase):
             logger.info('thread_{}: purchase finish'.format(self.thread_num))
         else:
             logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
-        ns.end_flag = True
+        fin.end_flag = True
         return
 
 if __name__ == '__main__':
