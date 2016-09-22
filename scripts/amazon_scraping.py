@@ -6,6 +6,7 @@ import os
 import sys
 import threading
 import logging
+import time
 
 path = os.path.join(os.path.dirname(__file__), '../')
 sys.path.append(path)
@@ -38,7 +39,7 @@ logger.setLevel(logging.INFO)
 
 CART_TYPE = ['one_click', 'normal']
 RETRY_COUNT = 100
-THREAD_NUM = 3
+THREAD_NUM = 5
 IS_DEBUG = True
 
 
@@ -149,13 +150,28 @@ class AmazonPurchase(BasePurchase):
             logger.info('thread_{}: Purchased in other thread'.format(self.thread_num))
             return
 
-        self.wait.until(EC.presence_of_element_located((By.NAME, 'placeYourOrder1')))
+        chaenge = self.driver.find_elements_by_class_name('change-quantity-button')
+        target_num = len(chaenge)
+        logger.info('thread_{}: update_quantity target_num {}'.format(self.thread_num, target_num))
 
+        for i, c in enumerate(chaenge):
+            # TODO : 良い方法模索中
+            self.driver.find_elements_by_class_name('change-quantity-button')[i].click()
+            quantity_input = self.driver.find_elements_by_class_name('quantity-input')[i]
+            quantity_input.clear()
+            quantity_input.send_keys("1")
+            time.sleep(0.1)
+            update_quantity_button = self.driver.find_elements_by_class_name('update-quantity-button')[i]
+            update_quantity_button.click()
+            time.sleep(1)
+
+        self.wait.until(EC.presence_of_element_located((By.NAME, 'placeYourOrder1')))
         if not IS_DEBUG:
             # ↓最終決済
             self.driver.find_element_by_name('placeYourOrder1').click()
             logger.info('thread_{}: purchase finish'.format(self.thread_num))
         else:
+            self.driver.find_element_by_name('placeYourOrder1')
             logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
         fin.end_flag = True
         return
