@@ -5,6 +5,7 @@ http://selenium-python.readthedocs.io/locating-elements.html#locating-by-xpath
 
 import os
 import sys
+import logging
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -15,8 +16,22 @@ sys.path.append(path)
 driver_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'driver', 'chromedriver'))
 
 
-class Finish(object):
+class ExclusiveLock(Exception):
     pass
+
+
+class Lock(object):
+
+    def __init__(self):
+        self.thread = None
+
+    def check_lock(self, thread_num, message):
+        thread = 'thread_{}'.format(thread_num)
+        if self.thread and thread != self.thread:
+            raise ExclusiveLock(message)
+
+    def set_lock(self, thread_num):
+        self.thread = 'thread_{}'.format(thread_num)
 
 
 class BasePurchase():
@@ -45,3 +60,12 @@ class BasePurchase():
 
     def _purchase(self):
         pass
+
+
+def get_logger(file_name):
+    logging.basicConfig(level=logging.INFO,
+    filename=file_name,
+    format="%(asctime)s %(levelname)-7s %(message)s")
+    logger = logging.getLogger("logger")
+    logger.setLevel(logging.INFO)
+    return logger

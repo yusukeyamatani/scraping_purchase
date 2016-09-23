@@ -1,63 +1,48 @@
 # -*- coding: utf-8 -*-
 """
 楽天
+楽天はブラウザ毎に情報が管理されるため、購入直前時のみ排他Lockする
 """
 import os
 import sys
 import threading
-import logging
-
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
-
-from base import BasePurchase, Finish
-
-
-path = os.path.join(os.path.dirname(__file__), '../')
-sys.path.append(path)
-from settings.rakuten import (LOGIN_URL,
-                              LOGOUT_URL,
+from base import BasePurchase, Lock, get_logger
+from settings.rakuten import (LOGOUT_URL,
                               PRODUCT_URL,
                               ID,
                               PASSWORD,
                               )
 
+lock = Lock()
 
-logging.basicConfig(level=logging.INFO,
-    filename="rakuten_purchase.log",
-    format="%(asctime)s %(levelname)-7s %(message)s")
-logger = logging.getLogger("logger")
-logger.setLevel(logging.INFO)
-
+logger = get_logger('rakuten_purchase.log')
 
 RETRY_COUNT = 100
 THREAD_NUM = 5
 IS_DEBUG = True
 
-fin = Finish()
-fin.end_flag = False
-
 
 class RakutenPurchase(BasePurchase):
-
     def product_purchase(self):
         try:
             self._product_purchase()
         except Exception as e:
-            logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__, e))
+            logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__.__name__, e))
         finally:
             self.driver.get(LOGOUT_URL)
             self.driver.close()
             logger.info('thread_{}: logout'.format(self.thread_num))
 
     def _product_purchase(self):
-            self.driver.get(PRODUCT_URL)
-            self._add_cart()
-            self._procedures()
-            self._purchase_login()
-            self._purchase()
+        self.driver.get(PRODUCT_URL)
+        self._add_cart()
+        self._procedures()
+        self._purchase_login()
+        self._purchase()
 
     def _add_cart(self):
 
@@ -95,9 +80,7 @@ class RakutenPurchase(BasePurchase):
         logger.info('thread_{}: purchase_login'.format(self.thread_num))
 
     def _purchase(self):
-        if fin.end_flag:
-            logger.info('thread_{}: Purchased in other thread'.format(self.thread_num))
-            return
+        lock.check_lock(self.thread_num, '_purchase')
 
         self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'btn-red')))
 
@@ -107,8 +90,9 @@ class RakutenPurchase(BasePurchase):
             logger.info('thread_{}: purchase finish'.format(self.thread_num))
         else:
             logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
-        fin.end_flag = True
-        return
+
+        lock.set_lock(self.thread_num)
+
 
 if __name__ == '__main__':
     threads = []

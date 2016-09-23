@@ -1,27 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 Amazon
+amazonはカートに入れた際に購入個数が各ブラウザで共有され加算されるので、1台がカート追加に成功した時点で排他Lockする
 """
 import os
 import sys
 import threading
-import logging
-import time
-
-path = os.path.join(os.path.dirname(__file__), '../')
-sys.path.append(path)
-
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-
-from base import BasePurchase, Finish
-
-path = os.path.join(os.path.dirname(__file__), '../')
-sys.path.append(path)
-
+from base import BasePurchase, Lock, get_logger
 from settings.amazon import (LOGIN_URL,
                              LOGOUT_URL,
                              PRODUCT_URL,
@@ -29,23 +18,14 @@ from settings.amazon import (LOGIN_URL,
                              PASSWORD,
                              )
 
+lock = Lock()
 
-logging.basicConfig(level=logging.INFO,
-    filename="amazon_purchase.log",
-    format="%(asctime)s %(levelname)-7s %(message)s")
-logger = logging.getLogger("logger")
-logger.setLevel(logging.INFO)
-
+logger = get_logger('amazon_purchase.log')
 
 CART_TYPE = ['one_click', 'normal']
 RETRY_COUNT = 100
 THREAD_NUM = 5
 IS_DEBUG = True
-
-
-class Finish(object): pass
-fin = Finish()
-fin.end_flag = False
 
 
 class CartExist(Exception):
@@ -58,7 +38,7 @@ class AmazonPurchase(BasePurchase):
         try:
             self._product_purchase()
         except Exception as e:
-            logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__, e))
+            logger.info('thread_{}: {} {}'.format(self.thread_num, e.__class__.__name__, e))
         finally:
             self.driver.get(LOGOUT_URL)
             self.driver.close()
@@ -92,13 +72,13 @@ class AmazonPurchase(BasePurchase):
 
         def _one_click_exists():
             try:
-                return EC.presence_of_element_located((By.ID, 'oneClickBuyButton'))
+                return self.driver.find_element_by_id('oneClickBuyButton')
             except NoSuchElementException:
                 return None
 
         def _cart_exists():
             try:
-                return self.wait.until(EC.presence_of_element_located((By.ID, 'submit.add-to-cart')))
+                return self.driver.find_element_by_id('submit.add-to-cart')
             except NoSuchElementException:
                 return None
 
@@ -107,7 +87,7 @@ class AmazonPurchase(BasePurchase):
             if _one_click_exists():
                 return CART_TYPE[0]
 
-            if _cart_exists:
+            if _cart_exists():
                 return CART_TYPE[1]
 
             return None
@@ -128,10 +108,14 @@ class AmazonPurchase(BasePurchase):
                 logger.info('thread_{}: DEBUG one click -> normal'.format(self.thread_num))
                 cart_type = CART_TYPE[1]
             else:
+                lock.check_lock(self.thread_num, '_add_cart:{}'.format(cart_type))
+
                 self.driver.find_element_by_id('oneClickBuyButton').click()
                 logger.info('thread_{}: one click'.format(self.thread_num))
 
         if cart_type == CART_TYPE[1]:
+            lock.check_lock(self.thread_num, '_add_cart:{}'.format(cart_type))
+
             self.driver.find_element_by_id('submit.add-to-cart').click()
             logger.info('thread_{}: add_cart'.format(self.thread_num))
 
@@ -139,6 +123,9 @@ class AmazonPurchase(BasePurchase):
             raise CartExist
 
     def _procedures(self):
+        lock.check_lock(self.thread_num, '_procedures')
+        lock.set_lock(self.thread_num)
+
         self.wait.until(EC.presence_of_element_located((By.ID, 'hlb-ptc-btn')))
 
         cart_btn = self.driver.find_element_by_id('hlb-ptc-btn')
@@ -146,24 +133,7 @@ class AmazonPurchase(BasePurchase):
         logger.info('thread_{}: procedures'.format(self.thread_num))
 
     def _purchase(self):
-        if fin.end_flag:
-            logger.info('thread_{}: Purchased in other thread'.format(self.thread_num))
-            return
-
-        chaenge = self.driver.find_elements_by_class_name('change-quantity-button')
-        target_num = len(chaenge)
-        logger.info('thread_{}: update_quantity target_num {}'.format(self.thread_num, target_num))
-
-        for i, c in enumerate(chaenge):
-            # TODO : 良い方法模索中
-            self.driver.find_elements_by_class_name('change-quantity-button')[i].click()
-            quantity_input = self.driver.find_elements_by_class_name('quantity-input')[i]
-            quantity_input.clear()
-            quantity_input.send_keys("1")
-            time.sleep(0.1)
-            update_quantity_button = self.driver.find_elements_by_class_name('update-quantity-button')[i]
-            update_quantity_button.click()
-            time.sleep(1)
+        lock.check_lock(self.thread_num, '_purchase')
 
         self.wait.until(EC.presence_of_element_located((By.NAME, 'placeYourOrder1')))
         if not IS_DEBUG:
@@ -173,8 +143,8 @@ class AmazonPurchase(BasePurchase):
         else:
             self.driver.find_element_by_name('placeYourOrder1')
             logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
-        fin.end_flag = True
-        return
+
+        lock.set_lock(self.thread_num)
 
 if __name__ == '__main__':
     threads = []
