@@ -3,10 +3,8 @@
 楽天
 楽天はブラウザ毎に情報が管理されるため、購入直前時のみ排他Lockする
 """
-import os
-import sys
 import threading
-from selenium.webdriver.support.ui import WebDriverWait
+import time
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
@@ -21,7 +19,7 @@ lock = Lock()
 
 logger = get_logger('rakuten_purchase.log')
 
-RETRY_COUNT = 100
+RETRY_COUNT = 1000
 THREAD_NUM = 5
 IS_DEBUG = True
 
@@ -48,8 +46,7 @@ class RakutenPurchase(BasePurchase):
 
         def _cart_element_exists():
             try:
-                return WebDriverWait(self.driver, 1).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, 'new_addToCart')))
+                return self.driver.find_element_by_class_name('new_addToCart')
             except NoSuchElementException:
                 return None
 
@@ -59,6 +56,7 @@ class RakutenPurchase(BasePurchase):
             else:
                 self.driver.execute_script('location.reload()')
                 logger.info('thread_{}: reload'.format(self.thread_num))
+                time.sleep(0.3)
 
         self.driver.find_element_by_class_name('new_addToCart').click()
         logger.info('thread_{}: add_cart'.format(self.thread_num))
@@ -92,7 +90,6 @@ class RakutenPurchase(BasePurchase):
             logger.info('thread_{}: DEBUG_purchase'.format(self.thread_num))
 
         lock.set_lock(self.thread_num)
-
 
 if __name__ == '__main__':
     threads = []

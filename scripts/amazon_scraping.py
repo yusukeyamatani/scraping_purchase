@@ -3,8 +3,7 @@
 Amazon
 amazonはカートに入れた際に購入個数が各ブラウザで共有され加算されるので、1台がカート追加に成功した時点で排他Lockする
 """
-import os
-import sys
+import time
 import threading
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -23,7 +22,7 @@ lock = Lock()
 logger = get_logger('amazon_purchase.log')
 
 CART_TYPE = ['one_click', 'normal']
-RETRY_COUNT = 100
+RETRY_COUNT = 1000
 THREAD_NUM = 5
 IS_DEBUG = True
 
@@ -102,6 +101,7 @@ class AmazonPurchase(BasePurchase):
             else:
                 self.driver.execute_script('location.reload()')
                 logger.info('thread_{}: reload'.format(self.thread_num))
+                time.sleep(0.5)
 
         if cart_type == CART_TYPE[0]:
             if IS_DEBUG:
